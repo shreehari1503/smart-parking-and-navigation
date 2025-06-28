@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>navpark - Smart Parking Solutions</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-database-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d4ff, #090979);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: white;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00d4ff, #5a67d8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .login-form, .dashboard {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .login-form h2 {
+            margin-bottom: 30px;
+            color: white;
+            font-size: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.2);
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00d4ff, #090979);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #38b2ac, #2d3748);
+            color: white;
+        }
+
+        .btn-logout {
+            background: linear-gradient(45deg, #e53e3e, #c53030);
+            color: white;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: rgba(45, 55, 72, 0.95);
+            backdrop-filter: blur(15px);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            transition: right 0.4s ease;
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar.open {
+            right: 0;
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #e2e8f0;
+            padding: 5px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .spot-card {
+            background: linear-gradient(135deg, #00d4ff 0%, #5a67d8 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .spot-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .spot-card.booked {
+            background: linear-gradient(135deg, #e53e3e, #c53030);
+            opacity: 0.8;
+        }
+
+        .spot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .spot-id {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-available {
+            background: rgba(56, 178, 172, 0.8);
+        }
+
+        .status-booked {
+            background: rgba(229, 62, 62, 0.8);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .dashboard-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .dashboard-card h3 {
+            margin-bottom: 15px;
+            color: white;
+            font-size: 24px;
+        }
+
+        .dashboard-card p {
+            color: #e2e8f0;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .dashboard h2 {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #2d3748, #1a202c);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .qr-code {
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            display: inline-block;
+        }
+
+        .price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00d4ff;
+            margin: 15px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+
+        .error {
+            color: #fc8181;
+            background: rgba(229, 62, 62, 0.2);
+            border: 1px solid rgba(229, 62, 62, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                right: -100%;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">NAVPARK AI</div>
+            <div class="user-info" id="userInfo" style="display: none;">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <span id="userName">User</span>
+                <button class="btn btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="login-form" id="loginForm">
+            <h2>Welcome to NAVPARK</h2>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password" required>
+            </div>
+            <div id="authError" class="error hidden"></div>
+            <button class="btn btn-primary" onclick="login()" style="width: 100%; margin-bottom: 15px;">Login</button>
+            <button class="btn btn-secondary" onclick="register()" style="width: 100%;">Register</button>
+        </div>
+
+        <div class="dashboard hidden" id="dashboard">
+            <h2>Your Parking Dashboard</h2>
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3> Find Parking</h3>
+                    <p>Browse available parking spots in your area and book instantly</p>
+                    <button class="btn btn-primary" onclick="openSidebar()">View Available Spots</button>
+                </div>
+                <div class="dashboard-card">
+                    <h3> Your Bookings</h3>
+                    <p>Track your current and past parking reservations</p>
+                    <div id="userBookings">
+                        <p>No active bookings</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Available Parking Spots</h3>
+            <button class="close-btn" onclick="closeSidebar()">&times;</button>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <select id="sortOption" onchange="displayParkingSpots()" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.1); color: rgb(255, 255, 255); border: 1px solid rgba(255,255,255,0.2);">
+                <option value="distance">Sort by Distance</option>
+                <option value="cost">Sort by Cost</option>
+            </select>
+        </div>
+        <div id="spotsList">
+            <div class="loading">Loading spots...</div>
+        </div>
+    </div>
+
+    <div class="modal" id="bookingModal">
+        <div class="modal-content">
+            <h3>Complete Payment</h3>
+            <p>Spot: <span id="modalSpotId"></span></p>
+            <div class="price" id="modalPrice">₹50.00</div>
+            <p>Duration: 2 hours</p>
+            <div class="qr-code" id="qrCode"></div>
+            <p>Scan QR code to complete payment</p>
+            <button class="btn btn-primary" onclick="confirmBooking()" style="margin-right: 10px;">Confirm Payment</button>
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyB8732VEzI4uhnkAo4S_pszN0abA4c4mS4",
+            authDomain: "smart-parking-system-af097.firebaseapp.com",
+            databaseURL: "https://smart-parking-system-af097-default-rtdb.firebaseio.com",
+            projectId: "smart-parking-system-af097",
+            storageBucket: "smart-parking-system-af097.firebasestorage.app",
+            messagingSenderId: "877099531768",
+            appId: "1:877099531768:web:d14b2a9575807187402a0d",
+            measurementId: "G-N73E8JPQHC"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+
+        let currentUser = null;
+        let parkingSpots = {};
+        let userBookings = [];
+        let spotsListener = null;
+
+        function generateRandomQRData() {
+            const transactionId = 'TXN' + Math.random().toString(36).substr(2, 9).toUpperCase();
+            const paymentRef = 'PAY' + Date.now().toString(36).toUpperCase();
+            return {
+                transactionId: transactionId,
+                paymentReference: paymentRef,
+                amount: 50,
+                spotId: document.getElementById('modalSpotId').textContent,
+                timestamp: new Date().toISOString(),
+                bankCode: Math.floor(Math.random() * 9000) + 1000,
+                merchantId: 'NAVPARK' + Math.floor(Math.random() * 999),
+                randomHash: btoa(Math.random().toString()).substr(0, 16)
+            };
+        }
+
+        function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showError('Please enter both email and password');
+                return;
+            }
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    currentUser = userCredential.user;
+                    showDashboard();
+                    setupFirebaseListeners();
+                })
+                .catch((error) => {
+                    showError('Login failed: ' + error.message);
+                });
+        }
+
+        function register() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showError('Please enter both email and password');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters');
+                return;
+            }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    currentUser = userCredential.user;
+                    database.ref('users/' + currentUser.uid).set({
+                        email: currentUser.email,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP,
+                        bookings: {}
+                    });
+                    showDashboard();
+                    setupFirebaseListeners();
+                })
+                .catch((error) => {
+                    showError('Registration failed: ' + error.message);
+                });
+        }
+
+        function logout() {
+            auth.signOut().then(() => {
+                currentUser = null;
+                userBookings = [];
+                if (spotsListener) {
+                    spotsListener.off();
+                    spotsListener = null;
+                }
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+                document.getElementById('userInfo').style.display = 'none';
+                closeSidebar();
+            });
+        }
+
+        function setupFirebaseListeners() {
+            spotsListener = database.ref('Spots');
+            spotsListener.on('value', (snapshot) => {
+                parkingSpots = snapshot.val() || {};
+                if (document.getElementById('sidebar').classList.contains('open')) {
+                    displayParkingSpots();
+                }
+            });
+
+            if (currentUser) {
+                database.ref('users/' + currentUser.uid + '/bookings').on('value', (snapshot) => {
+                    const bookingsData = snapshot.val() || {};
+                    userBookings = Object.keys(bookingsData).map(key => ({
+                        id: key,
+                        ...bookingsData[key]
+                    }));
+                    updateUserBookings();
+                });
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('userInfo').style.display = 'flex';
+            
+            const displayName = currentUser.displayName || currentUser.email.split('@')[0];
+            document.getElementById('userName').textContent = displayName;
+            document.getElementById('userAvatar').textContent = displayName.charAt(0).toUpperCase();
+            hideError();
+            updateUserBookings();
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('authError');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('authError').classList.add('hidden');
+        }
+
+        function openSidebar() {
+            document.getElementById('sidebar').classList.add('open');
+            loadParkingSpots();
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+        }
+
+        function loadParkingSpots() {
+            const spotsList = document.getElementById('spotsList');
+            spotsList.innerHTML = '<div class="loading">Loading spots from Firebase...</div>';
+
+            database.ref('Spots').once('value')
+                .then((snapshot) => {
+                    parkingSpots = snapshot.val() || {};
+                    displayParkingSpots();
+                })
+                .catch((error) => {
+                    spotsList.innerHTML = '<div class="error">Error loading parking spots. Please try again.</div>';
+                });
+        }
+
+        function displayParkingSpots() {
+    const spotsList = document.getElementById('spotsList');
+    const sortOption = document.getElementById('sortOption')?.value || 'distance';
+    spotsList.innerHTML = '';
+
+    if (Object.keys(parkingSpots).length === 0) {
+        spotsList.innerHTML = '<div class="loading">No parking spots available.</div>';
+        return;
+    }
+
+   
+    const baseLat = 12.9187;
+    const baseLng = 77.5111;
+
+   
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; 
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    let spotsArray = Object.keys(parkingSpots).map(spotId => {
+        const spotData = parkingSpots[spotId];
+        let distance = 0;
+        if (spotData.coordinate && spotData.coordinate.length >= 2) {
+            distance = haversineDistance(
+                baseLat, baseLng,
+                spotData.coordinate[0], spotData.coordinate[1]
+            );
+        }
+        return {
+            id: spotId,
+            ...spotData,
+            price: spotData.price,
+            distance: distance
+        };
+    });
+
+    spotsArray.sort((a, b) => sortOption === 'cost' ? a.price - b.price : a.distance - b.distance);
+
+    spotsArray.forEach(spot => {
+        const isAvailable = !spot.booked && !spot.occupied;
+        const spotCard = document.createElement('div');
+        spotCard.className = `spot-card ${!isAvailable ? 'booked' : ''}`;
+        spotCard.innerHTML = `
+            <div class="spot-header">
+                <div class="spot-id">Spot ${spot.id}</div>
+                <div class="status-badge ${isAvailable ? 'status-available' : 'status-booked'}">
+                    ${isAvailable ? 'Available' : 'Unavailable'}
+                </div>
+            </div>
+            <p>Price: ₹${spot.price}/hour • ${spot.distance.toFixed(1)} km away</p>
+${spot.name ? `<p>Address: ${spot.name}</p>` : ''}
+${spot.coordinate && spot.coordinate.length >= 2 ? `
+    <p>Coordinates: ${spot.coordinate[0].toFixed(4)}, ${spot.coordinate[1].toFixed(4)}</p>` : ''}
+${isAvailable ? `
+    <button class="btn btn-primary" onclick="bookSpot('${spot.id}')" style="width: 100%; margin-top: 10px;">Book Now</button>
+    <button class="btn btn-secondary" onclick="navigateToSpot('${spot.id}')" style="width: 100%; margin-top: 5px;">Navigate</button>
+` : `
+    <p style="margin-top: 10px; opacity: 0.8;">${spot.booked ? 'Already booked' : 'Currently occupied'}</p>
+`}
+
+        `;
+        spotsList.appendChild(spotCard);
+    });
+}
+
+
+        function bookSpot(spotId) {
+            document.getElementById('modalSpotId').textContent = spotId;
+            document.getElementById('bookingModal').style.display = 'block';
+            generateQRCode();
+        }
+
+        function generateQRCode() {
+    const qrContainer = document.getElementById('qrCode');
+    qrContainer.innerHTML = '';
+
+    // Create an <img> element and set its source to your QR code file
+    const img = document.createElement('img');
+    img.src = "C:\\Users\\SHREEHARI\\Downloads\\WhatsApp Image 2025-06-27 at 10.57.37 AM.jpeg";
+
+    img.alt = 'QR Code';
+    img.style.width = '200px';  // Adjust size as needed
+    img.style.height = '200px';
+
+    qrContainer.appendChild(img);
+}
+
+        function confirmBooking() {
+            const spotId = document.getElementById('modalSpotId').textContent;
+            
+            if (!currentUser) {
+                alert('Please log in to book a parking spot.');
+                return;
+            }
+            
+            const spot = parkingSpots[spotId];
+            const price = spot.price; 
+            
+            const spotRef = database.ref('Spots/' + spotId);
+            spotRef.update({
+                booked: true,
+                bookedBy: currentUser.uid,
+                bookedAt: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                const bookingRef = database.ref('users/' + currentUser.uid + '/bookings').push();
+                return bookingRef.set({
+                    spotId: spotId,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP,
+                    duration: 2,
+                    price: price,
+                    status: 'active'
+                });
+            }).then(() => {
+                closeModal();
+                closeSidebar();
+                alert('Payment confirmed! You can now navigate to your parking spot.');
+            }).catch((error) => {
+                alert('Error confirming booking. Please try again.');
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('bookingModal').style.display = 'none';
+        }
+
+        function navigateToSpot(spotId) {
+            const spot = parkingSpots[spotId];
+            if (spot && spot.coordinate && spot.coordinate.length >= 2) {
+                const lat = spot.coordinate[0];
+                const lng = spot.coordinate[1];
+                const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+                window.open(mapsUrl, '_blank');
+            } else {
+                alert('Navigation coordinates not available for this spot.');
+            }
+        }
+
+        function updateUserBookings() {
+            const bookingsContainer = document.getElementById('userBookings');
+            
+            if (userBookings.length === 0) {
+                bookingsContainer.innerHTML = '<p>No active bookings</p>';
+                return;
+            }
+            
+            bookingsContainer.innerHTML = userBookings.map(booking => `
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 10px; text-align: left; border: 1px solid rgba(255, 255, 255, 0.2);">
+                    <strong>Spot ${booking.spotId}</strong><br>
+                    Duration: ${booking.duration} hours<br>
+                    Price: ₹${booking.price}<br>
+                    Status: <span style="color: #00d4ff; font-weight: bold;">${booking.status}</span><br>
+                    <button class="btn btn-secondary" onclick="navigateToSpot('${booking.spotId}')" style="margin-top: 8px; padding: 5px 10px; font-size: 12px;">
+                        Navigate
+                    </button>
+                    ${booking.status === 'active' ? `
+                        <button class="btn" onclick="endBooking('${booking.id || booking.spotId}')" style="margin-top: 8px; margin-left: 5px; padding: 5px 10px; font-size: 12px; background: #e53e3e; color: white;">
+                            End Booking
+                        </button>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function endBooking(bookingId) {
+            if (!currentUser) return;
+            
+            const booking = userBookings.find(b => b.id === bookingId || b.spotId === bookingId);
+            if (!booking) return;
+            
+            database.ref('Spots/' + booking.spotId).update({
+                booked: false,
+                bookedBy: null,
+                bookedAt: null
+            }).then(() => {
+                return database.ref('users/' + currentUser.uid + '/bookings/' + (booking.id || bookingId)).update({
+                    status: 'completed',
+                    endedAt: firebase.database.ServerValue.TIMESTAMP
+                });
+            }).then(() => {
+                alert('Booking ended successfully!');
+            }).catch((error) => {
+                alert('Error ending booking. Please try again.');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    currentUser = user;
+                    showDashboard();
+                    setupFirebaseListeners();
+                } else {
+                    currentUser = null;
+                    document.getElementById('loginForm').classList.remove('hidden');
+                    document.getElementById('dashboard').classList.add('hidden');
+                    document.getElementById('userInfo').style.display = 'none';
+                }
+            });
+            
+            window.onclick = function(event) {
+                const modal = document.getElementById('bookingModal');
+                if (event.target === modal) {
+                    closeModal();
+                }
+            };
+        });
+    </script>
+</body>
+</html>
